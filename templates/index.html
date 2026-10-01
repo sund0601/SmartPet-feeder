@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pet Feeder Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 420px;
+            padding: 25px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sensor-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .sensor-title {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .sensor-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1a202c;
+        }
+
+        .gauge-section {
+            margin-bottom: 25px;
+        }
+
+        .gauge-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+
+        .progress-track {
+            background: #edf2f7;
+            border-radius: 10px;
+            height: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: #48bb78;
+            width: 0%;
+            height: 100%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        .btn-feed {
+            background: #ed8936;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 4px 12px rgba(237, 137, 54, 0.3);
+        }
+
+        .btn-feed:hover {
+            background: #dd6b20;
+        }
+
+        .btn-feed:active {
+            transform: scale(0.98);
+        }
+
+        .status-box {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #718096;
+            border-top: 1px solid #edf2f7;
+            padding-top: 15px;
+        }
+
+        #status-text {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>🐾 เครื่องให้อาหารสัตว์</h2>
+
+        <!-- ส่วนเซนเซอร์อุณหภูมิและความชื้น -->
+        <div class="sensor-grid">
+            <div class="sensor-card">
+                <div class="sensor-title">🌡️ อุณหภูมิ</div>
+                <div class="sensor-value"><span id="temp-val">--</span> °C</div>
+            </div>
+            <div class="sensor-card">
+                <div class="sensor-title">💧 ความชื้น</div>
+                <div class="sensor-value"><span id="hum-val">--</span> %</div>
+            </div>
+        </div>
+
+        <!-- แถบวัดระดับอาหารคงเหลือ -->
+        <div class="gauge-section">
+            <div class="gauge-label">
+                <span>ระดับอาหารคงเหลือ</span>
+                <span id="food-pct-label">0%</span>
+            </div>
+            <div class="progress-track">
+                <div id="food-progress" class="progress-bar"></div>
+            </div>
+        </div>
+
+        <!-- ปุ่มสั่งงานให้อาหาร -->
+        <button class="btn-feed" onclick="feedNow()">ให้อาหารทันที 🦴</button>
+
+        <!-- สถานะระบบ -->
+        <div class="status-box">
+            <div id="status-text" style="color: #718096;">ระบบพร้อมทำงาน</div>
+            <div>การให้อาหารล่าสุด: <span id="last-feed">-</span></div>
+        </div>
+    </div>
+
+    <script>
+        function feedNow() {
+            const statusText = document.getElementById('status-text');
+            statusText.innerText = "กำลังส่งคำสั่งผ่าน HiveMQ...";
+            statusText.style.color = "#ed8936";
+
+            fetch('/api/feed', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    statusText.innerText = "ส่งคำสั่งสำเร็จ! มอเตอร์กำลังทำงาน";
+                    statusText.style.color = "#38a169";
+                    setTimeout(() => {
+                        statusText.innerText = "ระบบพร้อมทำงาน";
+                        statusText.style.color = "#718096";
+                    }, 4000);
+                })
+                .catch(err => {
+                    statusText.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ!";
+                    statusText.style.color = "#e53e3e";
+                });
+        }
+
+        function updateDashboard() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    // อัปเดตอุณหภูมิและความชื้น
+                    document.getElementById('temp-val').innerText = data.temp;
+                    document.getElementById('hum-val').innerText = data.hum;
+
+                    // อัปเดตแถบอาหาร
+                    const pct = Math.round(data.food_pct);
+                    document.getElementById('food-pct-label').innerText = pct + '%';
+                    const progressBar = document.getElementById('food-progress');
+                    progressBar.style.width = pct + '%';
+
+                    // เปลี่ยนสีแถบตามความจุอาหาร
+                    if (pct <= 20) {
+                        progressBar.style.backgroundColor = '#e53e3e'; // แดงเตือน
+                    } else if (pct <= 50) {
+                        progressBar.style.backgroundColor = '#ecc94b'; // เหลือง
+                    } else {
+                        progressBar.style.backgroundColor = '#48bb78'; // เขียวปกติ
+                    }
+
+                    document.getElementById('last-feed').innerText = data.last_feed;
+                })
+                .catch(err => console.error("Update error:", err));
+        }
+
+        // ดึงค่าอัปเดตทุก 3 วินาที
+        setInterval(updateDashboard, 3000);
+        updateDashboard();
+    </script>
+
+</body>
+
+</html>
